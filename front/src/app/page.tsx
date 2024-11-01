@@ -32,6 +32,7 @@ export default function Home() {
     totalLessons: 0
   });
   const [isDarkMode, setIsDarkMode] = useState(true);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const fetchStats = async () => {
     try {
@@ -55,11 +56,9 @@ export default function Home() {
   useEffect(() => {
     setMounted(true);
     fetchStats();
-    // Aplica tema dark por padrão
     document.documentElement.classList.add('dark');
   }, []);
 
-  // Evita renderização durante a hidratação
   if (!mounted) {
     return null;
   }
@@ -67,14 +66,20 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100">
       {/* Header */}
-      <div className="bg-gray-900 border-b border-gray-800">
+      <div className="bg-gray-900 border-b border-gray-800 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
             <div className="flex items-center">
-              <Menu className="h-6 w-6 text-gray-400 mr-4" />
-              <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-                <BookOpenCheck className="h-8 w-8 text-indigo-500" />
-                Plataforma de Cursos
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="md:hidden text-gray-400 hover:text-gray-300 mr-4"
+              >
+                <Menu className="h-6 w-6" />
+              </button>
+              <h1 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
+                <BookOpenCheck className="h-6 w-6 md:h-8 md:w-8 text-indigo-500" />
+                <span className="hidden md:inline">Plataforma de Cursos</span>
+                <span className="md:hidden">Cursos</span>
               </h1>
             </div>
             <button
@@ -90,10 +95,32 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Mobile Menu */}
+      <div className={`md:hidden ${isMobileMenuOpen ? 'block' : 'hidden'} bg-gray-900 border-b border-gray-800`}>
+        <div className="px-2 pt-2 pb-3 space-y-1">
+          {['courses', 'modules', 'lessons'].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => {
+                setActiveTab(tab);
+                setIsMobileMenuOpen(false);
+              }}
+              className={`${
+                activeTab === tab
+                  ? 'bg-gray-800 text-white'
+                  : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+              } block w-full px-3 py-2 rounded-md text-base font-medium capitalize`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        {/* Tabs */}
-        <div className="border-b border-gray-800">
+      <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        {/* Desktop Tabs */}
+        <div className="hidden md:block border-b border-gray-800">
           <nav className="-mb-px flex space-x-8" aria-label="Tabs">
             <button
               onClick={() => setActiveTab('courses')}
@@ -135,7 +162,7 @@ export default function Home() {
         <div className="mt-6">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <div className="bg-gray-900 overflow-hidden shadow-lg rounded-lg border border-gray-800">
-              <div className="px-4 py-5 sm:p-6">
+              <div className="p-4 sm:p-6">
                 {activeTab === 'courses' && (
                   <AddCourseForm onCourseAdded={handleUpdate} />
                 )}
@@ -149,7 +176,7 @@ export default function Home() {
             </div>
 
             <div className="bg-gray-900 overflow-hidden shadow-lg rounded-lg border border-gray-800">
-              <div className="px-4 py-5 sm:p-6">
+              <div className="p-4 sm:p-6">
                 {activeTab === 'courses' && (
                   <CourseList onUpdate={handleUpdate} />
                 )}
@@ -166,27 +193,27 @@ export default function Home() {
 
         {/* Stats Section */}
         <div className="mt-8">
-          <dl className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+          <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="px-4 py-5 bg-gray-900 shadow-lg rounded-lg overflow-hidden sm:p-6 border border-gray-800">
               <dt className="text-sm font-medium text-gray-400 truncate flex items-center gap-2">
                 <BookOpen className="h-5 w-5 text-indigo-500" />
                 Total Cursos
               </dt>
-              <dd className="mt-1 text-3xl font-semibold text-white">{stats.totalCourses}</dd>
+              <dd className="mt-1 text-2xl sm:text-3xl font-semibold text-white">{stats.totalCourses}</dd>
             </div>
             <div className="px-4 py-5 bg-gray-900 shadow-lg rounded-lg overflow-hidden sm:p-6 border border-gray-800">
               <dt className="text-sm font-medium text-gray-400 truncate flex items-center gap-2">
                 <Layout className="h-5 w-5 text-indigo-500" />
                 Total Módulos
               </dt>
-              <dd className="mt-1 text-3xl font-semibold text-white">{stats.totalModules}</dd>
+              <dd className="mt-1 text-2xl sm:text-3xl font-semibold text-white">{stats.totalModules}</dd>
             </div>
-            <div className="px-4 py-5 bg-gray-900 shadow-lg rounded-lg overflow-hidden sm:p-6 border border-gray-800">
+            <div className="px-4 py-5 bg-gray-900 shadow-lg rounded-lg overflow-hidden sm:p-6 border border-gray-800 sm:col-span-2 lg:col-span-1">
               <dt className="text-sm font-medium text-gray-400 truncate flex items-center gap-2">
                 <Video className="h-5 w-5 text-indigo-500" />
                 Total Aulas
               </dt>
-              <dd className="mt-1 text-3xl font-semibold text-white">{stats.totalLessons}</dd>
+              <dd className="mt-1 text-2xl sm:text-3xl font-semibold text-white">{stats.totalLessons}</dd>
             </div>
           </dl>
         </div>
