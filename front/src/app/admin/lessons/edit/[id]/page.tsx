@@ -29,8 +29,15 @@ export default function EditLesson() {
   });
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+
     const fetchData = async () => {
       try {
         // Buscar aula
@@ -72,7 +79,7 @@ export default function EditLesson() {
     if (lessonId) {
       fetchData();
     }
-  }, [lessonId]);
+  }, [lessonId, mounted]);
 
   const handleCourseChange = async (courseId: string) => {
     setSelectedCourseId(courseId);
@@ -145,8 +152,12 @@ export default function EditLesson() {
     }
   };
 
+  if (!mounted) {
+    return null;
+  }
+
   return (
-    <div className="min-h-screen bg-gray-950 p-8">
+    <div className="min-h-screen bg-gray-950 p-8" suppressHydrationWarning>
       <div className="max-w-2xl mx-auto">
         <Link 
           href="/admin/dashboard"

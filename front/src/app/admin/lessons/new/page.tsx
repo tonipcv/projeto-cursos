@@ -4,14 +4,18 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import type { Course, Module } from '@/types/course';
 
 export default function NewLesson() {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [courses, setCourses] = useState<Course[]>([]);
   const [modules, setModules] = useState<Module[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState('');
+  const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -21,34 +25,32 @@ export default function NewLesson() {
     thumbnail: '',
     duration: '',
     moduleId: '',
-    order: 1
+    order: 0
   });
 
   useEffect(() => {
-    fetchCourses();
+    setMounted(true);
   }, []);
 
   useEffect(() => {
-    if (selectedCourseId) {
-      fetchModules(selectedCourseId);
-    }
-  }, [selectedCourseId]);
+    if (!mounted) return;
 
-  const fetchCourses = async () => {
-    try {
-      const response = await fetch('/api/courses');
-      if (!response.ok) throw new Error('Falha ao carregar cursos');
-      const data = await response.json();
-      setCourses(data);
-      if (data.length > 0) {
-        setSelectedCourseId(data[0].id);
+    const fetchCourses = async () => {
+      try {
+        const response = await fetch('/api/courses');
+        if (!response.ok) throw new Error('Falha ao carregar cursos');
+        const data = await response.json();
+        setCourses(data);
+      } catch (error) {
+        console.error('Erro ao carregar cursos:', error);
       }
-    } catch (error) {
-      console.error('Erro ao carregar cursos:', error);
-    }
-  };
+    };
 
-  const fetchModules = async (courseId: string) => {
+    fetchCourses();
+  }, [mounted]);
+
+  const handleCourseChange = async (courseId: string) => {
+    setSelectedCourseId(courseId);
     try {
       const response = await fetch(`/api/courses/${courseId}`);
       if (!response.ok) throw new Error('Falha ao carregar módulos');
@@ -59,6 +61,40 @@ export default function NewLesson() {
       }
     } catch (error) {
       console.error('Erro ao carregar módulos:', error);
+    }
+  };
+
+  const handleThumbnailUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Criar preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setThumbnailPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    // Upload do arquivo
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error('Falha ao fazer upload');
+      
+      const data = await response.json();
+      setFormData(prev => ({ ...prev, thumbnail: data.url }));
+    } catch (error) {
+      console.error('Erro ao fazer upload:', error);
+      alert('Erro ao fazer upload da imagem');
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -86,8 +122,12 @@ export default function NewLesson() {
     }
   };
 
+  if (!mounted) {
+    return null;
+  }
+
   return (
-    <div className="min-h-screen bg-gray-900 p-8">
+    <div className="min-h-screen bg-gray-950 p-8" suppressHydrationWarning>
       <div className="max-w-2xl mx-auto">
         <Link 
           href="/admin/dashboard"
@@ -97,20 +137,21 @@ export default function NewLesson() {
           Voltar ao Dashboard
         </Link>
 
-        <h1 className="text-2xl font-bold text-white mb-8">Criar Nova Aula</h1>
+        <h1 className="text-2xl font-bold text-white mb-8">Nova Aula</h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label htmlFor="courseId" className="block text-sm font-medium text-gray-300 mb-2">
-              Selecione o Curso
+              Curso
             </label>
             <select
               id="courseId"
               value={selectedCourseId}
-              onChange={(e) => setSelectedCourseId(e.target.value)}
-              className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onChange={(e) => handleCourseChange(e.target.value)}
+              className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
               required
             >
+              <option value="">Selecione um curso</option>
               {courses.map((course) => (
                 <option key={course.id} value={course.id}>
                   {course.title}
@@ -121,15 +162,16 @@ export default function NewLesson() {
 
           <div>
             <label htmlFor="moduleId" className="block text-sm font-medium text-gray-300 mb-2">
-              Selecione o Módulo
+              Módulo
             </label>
             <select
               id="moduleId"
               value={formData.moduleId}
               onChange={(e) => setFormData({ ...formData, moduleId: e.target.value })}
-              className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
               required
             >
+              <option value="">Selecione um módulo</option>
               {modules.map((module) => (
                 <option key={module.id} value={module.id}>
                   {module.title}
@@ -147,7 +189,7 @@ export default function NewLesson() {
               id="title"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
               required
             />
           </div>
@@ -161,24 +203,9 @@ export default function NewLesson() {
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={4}
-              className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+              required
             />
-          </div>
-
-          <div>
-            <label htmlFor="videoType" className="block text-sm font-medium text-gray-300 mb-2">
-              Tipo de Vídeo
-            </label>
-            <select
-              id="videoType"
-              value={formData.videoType}
-              onChange={(e) => setFormData({ ...formData, videoType: e.target.value })}
-              className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="youtube">YouTube</option>
-              <option value="vimeo">Vimeo</option>
-              <option value="custom">URL Personalizada</option>
-            </select>
           </div>
 
           <div>
@@ -190,33 +217,7 @@ export default function NewLesson() {
               id="videoId"
               value={formData.videoId}
               onChange={(e) => setFormData({ ...formData, videoId: e.target.value })}
-              className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="embedUrl" className="block text-sm font-medium text-gray-300 mb-2">
-              URL de Incorporação
-            </label>
-            <input
-              type="text"
-              id="embedUrl"
-              value={formData.embedUrl}
-              onChange={(e) => setFormData({ ...formData, embedUrl: e.target.value })}
-              className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="thumbnail" className="block text-sm font-medium text-gray-300 mb-2">
-              URL da Thumbnail
-            </label>
-            <input
-              type="text"
-              id="thumbnail"
-              value={formData.thumbnail}
-              onChange={(e) => setFormData({ ...formData, thumbnail: e.target.value })}
-              className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
             />
           </div>
 
@@ -230,34 +231,90 @@ export default function NewLesson() {
               value={formData.duration}
               onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
               placeholder="Ex: 10:30"
-              className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
             />
           </div>
 
           <div>
-            <label htmlFor="order" className="block text-sm font-medium text-gray-300 mb-2">
-              Ordem
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Thumbnail
             </label>
-            <input
-              type="number"
-              id="order"
-              value={formData.order}
-              onChange={(e) => setFormData({ ...formData, order: parseInt(e.target.value) })}
-              className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              min="1"
-              required
-            />
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <label 
+                  htmlFor="thumbnail"
+                  className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-700 rounded-lg cursor-pointer hover:border-violet-500 transition-colors"
+                >
+                  {thumbnailPreview || formData.thumbnail ? (
+                    <div className="relative w-full h-full">
+                      <Image
+                        src={thumbnailPreview || formData.thumbnail}
+                        alt="Thumbnail preview"
+                        fill
+                        className="object-cover rounded-lg"
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      <svg className="w-8 h-8 mb-4 text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
+                        <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/>
+                      </svg>
+                      <p className="mb-2 text-sm text-gray-500">
+                        <span className="font-semibold">Clique para fazer upload</span>
+                      </p>
+                      <p className="text-xs text-gray-500">PNG, JPG (MAX. 2MB)</p>
+                    </div>
+                  )}
+                  <input
+                    id="thumbnail"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleThumbnailUpload}
+                    disabled={isUploading}
+                  />
+                </label>
+              </div>
+              {(thumbnailPreview || formData.thumbnail) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setThumbnailPreview(null);
+                    setFormData(prev => ({ ...prev, thumbnail: '' }));
+                  }}
+                  className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              )}
+            </div>
+            {isUploading && (
+              <div className="mt-2 text-sm text-gray-400">
+                Fazendo upload...
+              </div>
+            )}
           </div>
 
-          <button
-            type="submit"
-            disabled={isLoading}
-            className={`w-full py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors ${
-              isLoading ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
-          >
-            {isLoading ? 'Criando...' : 'Criar Aula'}
-          </button>
+          <div className="flex gap-4">
+            <button
+              type="submit"
+              disabled={isLoading}
+              className={`flex-1 py-3 px-4 bg-violet-600/20 text-violet-500 rounded-lg hover:bg-violet-600/30 transition-all border border-violet-500/20 ${
+                isLoading ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+            >
+              {isLoading ? 'Salvando...' : 'Criar Aula'}
+            </button>
+            
+            <Link
+              href="/admin/dashboard"
+              className="flex-1 py-3 px-4 bg-gray-700 text-gray-200 rounded-lg hover:bg-gray-600 transition-colors text-center"
+            >
+              Cancelar
+            </Link>
+          </div>
         </form>
       </div>
     </div>
