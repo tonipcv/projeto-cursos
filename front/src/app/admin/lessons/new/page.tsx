@@ -19,7 +19,6 @@ export default function NewLesson() {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    videoId: '',
     embedUrl: '',
     videoType: 'youtube',
     thumbnail: '',
@@ -122,6 +121,59 @@ export default function NewLesson() {
     }
   };
 
+  // Função para lidar com a mudança no campo de embed
+  const handleEmbedChange = (embedCode: string) => {
+    setFormData(prev => ({ ...prev, embedUrl: embedCode }));
+  };
+
+  // Função para extrair o ID do vídeo do código embed do Panda
+  const extractPandaVideoId = (embedCode: string) => {
+    const divIdMatch = embedCode.match(/id="([^"]+)"/);
+    const scriptMatch = embedCode.match(/PandaPlayer\('([^']+)'/);
+    return (divIdMatch && divIdMatch[1]) || (scriptMatch && scriptMatch[1]) || null;
+  };
+
+  // Função para renderizar o preview do vídeo
+  const renderVideoPreview = () => {
+    if (!formData.embedUrl) return null;
+
+    return (
+      <div 
+        className="aspect-video w-full rounded-lg overflow-hidden bg-gray-800 border border-gray-700"
+        dangerouslySetInnerHTML={{ 
+          __html: formData.embedUrl 
+        }}
+      />
+    );
+  };
+
+  useEffect(() => {
+    // Adiciona o script do Panda Video se ainda não existir
+    if (!document.querySelector('script[src^="https://player.pandavideo.com.br/api.v2.js"]')) {
+      const script = document.createElement('script');
+      script.src = 'https://player.pandavideo.com.br/api.v2.js';
+      script.async = true;
+      document.head.appendChild(script);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Reinicializa o player do Panda quando o código embed muda
+    if (formData.embedUrl) {
+      const videoId = extractPandaVideoId(formData.embedUrl);
+      if (videoId && window.PandaPlayer) {
+        new window.PandaPlayer(videoId, {
+          onReady() {
+            this.loadButtonInTime({ fetchApi: true });
+          },
+          library_id: 'vz-7b6cf9e4-8bf',
+          video_external_id: videoId,
+          defaultStyle: true
+        });
+      }
+    }
+  }, [formData.embedUrl]);
+
   if (!mounted) {
     return null;
   }
@@ -209,29 +261,38 @@ export default function NewLesson() {
           </div>
 
           <div>
-            <label htmlFor="videoId" className="block text-sm font-medium text-gray-300 mb-2">
-              ID do Vídeo
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Código de Incorporação (Embed)
             </label>
-            <input
-              type="text"
-              id="videoId"
-              value={formData.videoId}
-              onChange={(e) => setFormData({ ...formData, videoId: e.target.value })}
-              className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+            <textarea
+              value={formData.embedUrl}
+              onChange={(e) => handleEmbedChange(e.target.value)}
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+              rows={6}
+              placeholder="Cole aqui o código de incorporação do vídeo..."
             />
           </div>
 
+          {/* Preview do Vídeo */}
+          {formData.embedUrl && (
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-300">
+                Preview do Vídeo
+              </label>
+              {renderVideoPreview()}
+            </div>
+          )}
+
           <div>
-            <label htmlFor="duration" className="block text-sm font-medium text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-gray-300 mb-2">
               Duração
             </label>
             <input
               type="text"
-              id="duration"
               value={formData.duration}
-              onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
+              onChange={(e) => setFormData(prev => ({ ...prev, duration: e.target.value }))}
               placeholder="Ex: 10:30"
-              className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
             />
           </div>
 

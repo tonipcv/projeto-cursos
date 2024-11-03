@@ -19,10 +19,7 @@ export default function EditLesson() {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    videoId: '',
     embedUrl: '',
-    videoType: 'youtube',
-    thumbnail: '',
     duration: '',
     moduleId: '',
     order: 0
@@ -62,10 +59,7 @@ export default function EditLesson() {
         setFormData({
           title: lessonData.title,
           description: lessonData.description || '',
-          videoId: lessonData.videoId || '',
           embedUrl: lessonData.embedUrl || '',
-          videoType: lessonData.videoType || 'youtube',
-          thumbnail: lessonData.thumbnail || '',
           duration: lessonData.duration || '',
           moduleId: lessonData.moduleId,
           order: lessonData.order
@@ -150,6 +144,25 @@ export default function EditLesson() {
     } finally {
       setIsUploading(false);
     }
+  };
+
+  // Função para lidar com a mudança no campo de embed
+  const handleEmbedChange = (embedCode: string) => {
+    setFormData(prev => ({ ...prev, embedUrl: embedCode }));
+  };
+
+  // Função para renderizar o preview do vídeo
+  const renderVideoPreview = () => {
+    if (!formData.embedUrl) return null;
+
+    return (
+      <div 
+        className="aspect-video w-full rounded-lg overflow-hidden bg-gray-800 border border-gray-700"
+        dangerouslySetInnerHTML={{ 
+          __html: formData.embedUrl 
+        }}
+      />
+    );
   };
 
   if (!mounted) {
@@ -239,29 +252,38 @@ export default function EditLesson() {
           </div>
 
           <div>
-            <label htmlFor="videoId" className="block text-sm font-medium text-gray-300 mb-2">
-              ID do Vídeo
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Código de Incorporação (Embed)
             </label>
-            <input
-              type="text"
-              id="videoId"
-              value={formData.videoId}
-              onChange={(e) => setFormData({ ...formData, videoId: e.target.value })}
-              className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+            <textarea
+              value={formData.embedUrl}
+              onChange={(e) => handleEmbedChange(e.target.value)}
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+              rows={6}
+              placeholder="Cole aqui o código de incorporação do vídeo..."
             />
           </div>
 
+          {/* Preview do Vídeo */}
+          {formData.embedUrl && (
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-300">
+                Preview do Vídeo
+              </label>
+              {renderVideoPreview()}
+            </div>
+          )}
+
           <div>
-            <label htmlFor="duration" className="block text-sm font-medium text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-gray-300 mb-2">
               Duração
             </label>
             <input
               type="text"
-              id="duration"
               value={formData.duration}
-              onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
+              onChange={(e) => setFormData(prev => ({ ...prev, duration: e.target.value }))}
               placeholder="Ex: 10:30"
-              className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
             />
           </div>
 
