@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import AddCourseForm from '../../components/admin/AddCourseForm';
-import CourseList from '../../components/admin/CourseList';
+import AddCourseForm from '../../../components/admin/AddCourseForm';
+import CourseList from '../../../components/admin/CourseList';
 
 export default function CoursesAdmin() {
   return (
@@ -14,4 +14,4 @@ export default function CoursesAdmin() {
       </div>
     </div>
   );
-} 
+} np

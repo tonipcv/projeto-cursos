@@ -5,25 +5,30 @@ export async function GET() {
   try {
     const courses = await prisma.course.findMany({
       include: {
+        _count: {
+          select: {
+            modules: true
+          }
+        },
         modules: {
           include: {
-            lessons: true
+            _count: {
+              select: {
+                lessons: true
+              }
+            }
           }
         }
-      },
-      orderBy: {
-        title: 'asc',
-      },
+      }
     });
 
+    // Transformar os dados para incluir as contagens
     const formattedCourses = courses.map(course => ({
       id: course.id,
       title: course.title,
       description: course.description,
-      modules: course.modules,
-      totalModules: course.modules.length,
-      totalLessons: course.modules.reduce((acc, module) => 
-        acc + (module.lessons?.length || 0), 0),
+      modulesCount: course._count.modules,
+      lessonsCount: course.modules.reduce((acc, module) => acc + module._count.lessons, 0),
       createdAt: course.createdAt,
       updatedAt: course.updatedAt
     }));
@@ -31,43 +36,40 @@ export async function GET() {
     return NextResponse.json(formattedCourses);
   } catch (error) {
     console.error('Erro ao buscar cursos:', error);
-    return NextResponse.json({ error: 'Erro ao buscar cursos' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Erro ao buscar cursos' },
+      { status: 500 }
+    );
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { title, description } = body;
-
-    if (!title || !description) {
-      return NextResponse.json({ 
-        error: 'Título e descrição são obrigatórios' 
-      }, { status: 400 });
-    }
-
+    const data = await request.json();
     const course = await prisma.course.create({
       data: {
-        title,
-        description,
+        title: data.title,
+        description: data.description,
       },
       include: {
-        modules: true
+        _count: {
+          select: {
+            modules: true
+          }
+        }
       }
     });
 
     return NextResponse.json({
-      id: course.id,
-      title: course.title,
-      description: course.description,
-      modules: course.modules,
-      totalModules: 0,
-      totalLessons: 0,
-      createdAt: course.createdAt,
-      updatedAt: course.updatedAt
+      ...course,
+      modulesCount: course._count.modules,
+      lessonsCount: 0
     });
   } catch (error) {
     console.error('Erro ao criar curso:', error);
-    return NextResponse.json({ error: 'Erro ao criar curso' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Erro ao criar curso' },
+      { status: 500 }
+    );
   }
 } 

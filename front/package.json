@@ -17,13 +17,18 @@
     "next": "latest",
     "react": "latest",
     "react-dom": "latest",
+    "recharts": "^2.13.3",
     "tailwind-merge": "^2.5.4"
   },
   "devDependencies": {
     "@types/node": "^22.8.6",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "@typescript-eslint/eslint-plugin": "^8.12.2",
+    "@typescript-eslint/parser": "^8.12.2",
     "autoprefixer": "latest",
+    "eslint": "^9.14.0",
+    "eslint-config-next": "^15.0.2",
     "postcss": "latest",
     "prisma": "latest",
     "tailwindcss": "latest",

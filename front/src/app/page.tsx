@@ -1,223 +1,147 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import AddCourseForm from '@/components/admin/AddCourseForm';
-import CourseList from '@/components/admin/CourseList';
-import AddModuleForm from '@/components/admin/AddModuleForm';
-import ModuleList from '@/components/admin/ModuleList';
-import AddLessonForm from '@/components/admin/AddLessonForm';
-import LessonList from '@/components/admin/LessonList';
+import { useEffect, useState } from 'react';
 import { 
   BookOpen, 
-  Layout, 
-  Video,
-  BookOpenCheck,
-  Menu,
-  Moon,
-  Sun
+  GraduationCap, 
+  PlayCircle, 
+  Plus,
+  Search
 } from 'lucide-react';
+import Link from 'next/link';
 
-interface Stats {
-  totalCourses: number;
-  totalModules: number;
-  totalLessons: number;
+interface Course {
+  id: string;
+  title: string;
+  description: string;
+  modulesCount?: number;
+  lessonsCount?: number;
 }
 
 export default function Home() {
-  const [mounted, setMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState('courses');
-  const [stats, setStats] = useState<Stats>({
-    totalCourses: 0,
-    totalModules: 0,
-    totalLessons: 0
-  });
-  const [isDarkMode, setIsDarkMode] = useState(true);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  const fetchStats = async () => {
-    try {
-      const response = await fetch('/api/stats');
-      const data = await response.json();
-      setStats(data);
-    } catch (error) {
-      console.error('Erro ao buscar estatísticas:', error);
-    }
-  };
-
-  const handleUpdate = async () => {
-    await fetchStats();
-  };
-
-  const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
-    document.documentElement.classList.toggle('dark');
-  };
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    setMounted(true);
-    fetchStats();
-    document.documentElement.classList.add('dark');
+    const fetchCourses = async () => {
+      try {
+        const response = await fetch('/api/courses');
+        if (!response.ok) throw new Error('Falha ao carregar cursos');
+        const data = await response.json();
+        setCourses(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Erro ao carregar cursos');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCourses();
   }, []);
 
-  if (!mounted) {
-    return null;
+  if (isLoading) {
+    return (
+      <main className="min-h-screen bg-gray-900">
+        <div className="flex items-center justify-center h-screen">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400"></div>
+          <span className="ml-2 text-gray-400">Carregando cursos...</span>
+        </div>
+      </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <main className="min-h-screen bg-gray-900">
+        <div className="text-gray-400 flex items-center justify-center h-screen">
+          <span className="mr-2">⚠️</span> {error}
+        </div>
+      </main>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100">
-      {/* Header */}
-      <div className="bg-gray-900 border-b border-gray-800 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
-            <div className="flex items-center">
-              <button
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="md:hidden text-gray-400 hover:text-gray-300 mr-4"
+    <main className="min-h-screen bg-gray-950">
+      {/* Header com navegação */}
+      <nav className="border-b border-gray-800 bg-gray-900/50 backdrop-blur-sm sticky top-0 z-50">
+        <div className="container mx-auto flex justify-between items-center p-4">
+          <div className="flex items-center space-x-8">
+            <h1 className="text-2xl font-bold text-white flex items-center">
+              <GraduationCap className="mr-2 text-violet-500" />
+              EduPlataforma
+            </h1>
+            <div className="relative hidden md:block">
+              <input
+                type="text"
+                placeholder="Buscar cursos..."
+                className="pl-10 pr-4 py-2 rounded-lg bg-gray-800/50 text-gray-200 border border-gray-800 focus:outline-none focus:ring-1 focus:ring-violet-500 focus:border-violet-500 w-[300px] placeholder-gray-400"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+            </div>
+          </div>
+          <Link 
+            href="/admin/dashboard" 
+            className="flex items-center px-4 py-2 bg-violet-600/20 text-violet-500 rounded-lg hover:bg-violet-600/30 transition-all border border-violet-500/20"
+          >
+            <Plus className="mr-2 h-5 w-5" />
+            Área Administrativa
+          </Link>
+        </div>
+      </nav>
+
+      <div className="container mx-auto px-4 py-16">
+        {/* Lista de Cursos */}
+        <section>
+          <div className="flex justify-between items-center mb-8">
+            <h2 className="text-2xl font-bold text-white flex items-center">
+              <BookOpen className="mr-2 text-violet-500" />
+              Cursos Disponíveis
+            </h2>
+            <button className="text-violet-500 hover:text-violet-400 text-sm">
+              Ver todos
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {courses
+              .filter(course => 
+                course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                course.description.toLowerCase().includes(searchTerm.toLowerCase())
+              )
+              .map((course: Course) => (
+              <div 
+                key={course.id} 
+                className="bg-gray-900 rounded-lg p-6 transition-all border border-gray-800 hover:border-violet-500/50 group"
               >
-                <Menu className="h-6 w-6" />
-              </button>
-              <h1 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
-                <BookOpenCheck className="h-6 w-6 md:h-8 md:w-8 text-indigo-500" />
-                <span className="hidden md:inline">Plataforma de Cursos</span>
-                <span className="md:hidden">Cursos</span>
-              </h1>
-            </div>
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
-            >
-              {isDarkMode ? 
-                <Sun className="h-5 w-5 text-yellow-500" /> : 
-                <Moon className="h-5 w-5 text-gray-400" />
-              }
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile Menu */}
-      <div className={`md:hidden ${isMobileMenuOpen ? 'block' : 'hidden'} bg-gray-900 border-b border-gray-800`}>
-        <div className="px-2 pt-2 pb-3 space-y-1">
-          {['courses', 'modules', 'lessons'].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => {
-                setActiveTab(tab);
-                setIsMobileMenuOpen(false);
-              }}
-              className={`${
-                activeTab === tab
-                  ? 'bg-gray-800 text-white'
-                  : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-              } block w-full px-3 py-2 rounded-md text-base font-medium capitalize`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        {/* Desktop Tabs */}
-        <div className="hidden md:block border-b border-gray-800">
-          <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-            <button
-              onClick={() => setActiveTab('courses')}
-              className={`${
-                activeTab === 'courses'
-                  ? 'border-indigo-500 text-indigo-400'
-                  : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-700'
-              } flex items-center gap-2 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
-            >
-              <BookOpen className="h-5 w-5" />
-              Cursos
-            </button>
-            <button
-              onClick={() => setActiveTab('modules')}
-              className={`${
-                activeTab === 'modules'
-                  ? 'border-indigo-500 text-indigo-400'
-                  : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-700'
-              } flex items-center gap-2 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
-            >
-              <Layout className="h-5 w-5" />
-              Módulos
-            </button>
-            <button
-              onClick={() => setActiveTab('lessons')}
-              className={`${
-                activeTab === 'lessons'
-                  ? 'border-indigo-500 text-indigo-400'
-                  : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-700'
-              } flex items-center gap-2 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
-            >
-              <Video className="h-5 w-5" />
-              Aulas
-            </button>
-          </nav>
-        </div>
-
-        {/* Content */}
-        <div className="mt-6">
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <div className="bg-gray-900 overflow-hidden shadow-lg rounded-lg border border-gray-800">
-              <div className="p-4 sm:p-6">
-                {activeTab === 'courses' && (
-                  <AddCourseForm onCourseAdded={handleUpdate} />
-                )}
-                {activeTab === 'modules' && (
-                  <AddModuleForm onModuleAdded={handleUpdate} />
-                )}
-                {activeTab === 'lessons' && (
-                  <AddLessonForm onLessonAdded={handleUpdate} />
-                )}
+                <div className="flex justify-between items-start mb-4">
+                  <h3 className="font-bold text-xl text-white group-hover:text-violet-500 transition-colors">
+                    {course.title}
+                  </h3>
+                  <span className="bg-violet-600/10 text-violet-500 text-xs px-2 py-1 rounded-full border border-violet-500/20">
+                    {course.modulesCount || 0} módulos
+                  </span>
+                </div>
+                <p className="text-gray-400 mb-6 line-clamp-2">{course.description}</p>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-500">
+                    {course.lessonsCount || 0} aulas
+                  </span>
+                  <Link 
+                    href={`/courses/${course.id}`}
+                    className="flex items-center px-4 py-2 bg-violet-600/20 text-violet-500 rounded-lg hover:bg-violet-600/30 transition-all border border-violet-500/20"
+                  >
+                    <PlayCircle className="mr-2 h-4 w-4" />
+                    Começar
+                  </Link>
+                </div>
               </div>
-            </div>
-
-            <div className="bg-gray-900 overflow-hidden shadow-lg rounded-lg border border-gray-800">
-              <div className="p-4 sm:p-6">
-                {activeTab === 'courses' && (
-                  <CourseList onUpdate={handleUpdate} />
-                )}
-                {activeTab === 'modules' && (
-                  <ModuleList onUpdate={handleUpdate} />
-                )}
-                {activeTab === 'lessons' && (
-                  <LessonList onUpdate={handleUpdate} />
-                )}
-              </div>
-            </div>
+            ))}
           </div>
-        </div>
-
-        {/* Stats Section */}
-        <div className="mt-8">
-          <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="px-4 py-5 bg-gray-900 shadow-lg rounded-lg overflow-hidden sm:p-6 border border-gray-800">
-              <dt className="text-sm font-medium text-gray-400 truncate flex items-center gap-2">
-                <BookOpen className="h-5 w-5 text-indigo-500" />
-                Total Cursos
-              </dt>
-              <dd className="mt-1 text-2xl sm:text-3xl font-semibold text-white">{stats.totalCourses}</dd>
-            </div>
-            <div className="px-4 py-5 bg-gray-900 shadow-lg rounded-lg overflow-hidden sm:p-6 border border-gray-800">
-              <dt className="text-sm font-medium text-gray-400 truncate flex items-center gap-2">
-                <Layout className="h-5 w-5 text-indigo-500" />
-                Total Módulos
-              </dt>
-              <dd className="mt-1 text-2xl sm:text-3xl font-semibold text-white">{stats.totalModules}</dd>
-            </div>
-            <div className="px-4 py-5 bg-gray-900 shadow-lg rounded-lg overflow-hidden sm:p-6 border border-gray-800 sm:col-span-2 lg:col-span-1">
-              <dt className="text-sm font-medium text-gray-400 truncate flex items-center gap-2">
-                <Video className="h-5 w-5 text-indigo-500" />
-                Total Aulas
-              </dt>
-              <dd className="mt-1 text-2xl sm:text-3xl font-semibold text-white">{stats.totalLessons}</dd>
-            </div>
-          </dl>
-        </div>
+        </section>
       </div>
-    </div>
-  );
+    </main>
+  )
 }

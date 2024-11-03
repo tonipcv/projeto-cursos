@@ -5,75 +5,67 @@ export async function GET() {
   try {
     const modules = await prisma.module.findMany({
       include: {
-        course: true
-      },
-      orderBy: [
-        {
-          course: {
-            title: 'asc',
+        course: true,
+        _count: {
+          select: {
+            lessons: true,
           },
         },
-        {
-          order: 'asc',
-        },
-      ],
+      },
     });
 
-    const formattedModules = modules.map(module => ({
-      id: module.id,
-      title: module.title,
-      description: module.description,
-      courseId: module.courseId,
-      courseTitle: module.course.title,
-      course: module.course
-    }));
-
-    return NextResponse.json(formattedModules);
+    return NextResponse.json(modules);
   } catch (error) {
-    console.error('Erro ao buscar módulos:', error);
-    return NextResponse.json([]);
+    return NextResponse.json(
+      { error: 'Erro ao buscar módulos' },
+      { status: 500 }
+    );
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { title, description, courseId } = body;
-
-    // Buscar o maior order do curso atual
-    const lastModule = await prisma.module.findFirst({
+    const data = await request.json();
+    
+    // Verifica se já existe um módulo com a mesma ordem no curso
+    const existingModule = await prisma.module.findFirst({
       where: {
-        courseId: courseId,
-      },
-      orderBy: {
-        order: 'desc',
+        courseId: data.courseId,
+        order: data.order,
       },
     });
 
-    const newOrder = (lastModule?.order ?? 0) + 1;
+    if (existingModule) {
+      // Se existir, incrementa a ordem dos módulos subsequentes
+      await prisma.module.updateMany({
+        where: {
+          courseId: data.courseId,
+          order: {
+            gte: data.order,
+          },
+        },
+        data: {
+          order: {
+            increment: 1,
+          },
+        },
+      });
+    }
 
     const module = await prisma.module.create({
       data: {
-        title,
-        description,
-        courseId,
-        order: newOrder,
-      },
-      include: {
-        course: true
+        title: data.title,
+        description: data.description,
+        order: data.order,
+        courseId: data.courseId,
       },
     });
 
-    return NextResponse.json({
-      id: module.id,
-      title: module.title,
-      description: module.description,
-      courseId: module.courseId,
-      courseTitle: module.course.title,
-      course: module.course
-    });
+    return NextResponse.json(module);
   } catch (error) {
-    console.error('Erro ao criar módulo:', error);
-    return NextResponse.json({ error: 'Erro ao criar módulo' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Erro ao criar módulo' },
+      { status: 500 }
+    );
   }
 } 

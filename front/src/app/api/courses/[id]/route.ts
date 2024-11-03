@@ -6,34 +6,76 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const id = params.id;
-
-    // Primeiro, excluir todas as aulas dos módulos do curso
-    await prisma.lesson.deleteMany({
+    await prisma.course.delete({
       where: {
-        module: {
-          courseId: id,
+        id: params.id,
+      },
+    });
+
+    return NextResponse.json({ message: 'Curso deletado com sucesso' });
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Erro ao deletar curso' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function GET(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const course = await prisma.course.findUnique({
+      where: {
+        id: params.id,
+      },
+      include: {
+        modules: {
+          include: {
+            lessons: true,
+          },
         },
       },
     });
 
-    // Depois, excluir os módulos do curso
-    await prisma.module.deleteMany({
-      where: {
-        courseId: id,
-      },
-    });
+    if (!course) {
+      return NextResponse.json(
+        { error: 'Curso não encontrado' },
+        { status: 404 }
+      );
+    }
 
-    // Por fim, excluir o curso
-    const deletedCourse = await prisma.course.delete({
-      where: {
-        id,
-      },
-    });
-
-    return NextResponse.json(deletedCourse);
+    return NextResponse.json(course);
   } catch (error) {
-    console.error('Erro ao deletar curso:', error);
-    return NextResponse.json({ error: 'Erro ao deletar curso' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Erro ao buscar curso' },
+      { status: 500 }
+    );
   }
-} 
+}
+
+export async function PUT(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const data = await request.json();
+    const course = await prisma.course.update({
+      where: {
+        id: params.id,
+      },
+      data: {
+        title: data.title,
+        description: data.description,
+      },
+    });
+
+    return NextResponse.json(course);
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Erro ao atualizar curso' },
+      { status: 500 }
+    );
+  }
+}
