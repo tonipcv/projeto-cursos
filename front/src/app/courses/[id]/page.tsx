@@ -14,9 +14,10 @@ import {
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import { ConfirmationModal } from '@/components/ConfirmationModal';
 
 interface Lesson {
-  id: string;
+  id: number;
   title: string;
   description: string | null;
   duration: string | null;
@@ -25,7 +26,7 @@ interface Lesson {
 }
 
 interface Module {
-  id: string;
+  id: number;
   title: string;
   description: string;
   order: number;
@@ -33,7 +34,7 @@ interface Module {
 }
 
 interface Course {
-  id: string;
+  id: number;
   title: string;
   description: string;
   modules: Module[];
@@ -53,7 +54,7 @@ export default function CourseView() {
   const [course, setCourse] = useState<Course | null>(null);
   const [stats, setStats] = useState<CourseStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
+  const [activeModuleId, setActiveModuleId] = useState<number | null>(null);
   const [showNewModuleForm, setShowNewModuleForm] = useState(false);
   const [showNewLessonForm, setShowNewLessonForm] = useState(false);
   const [newModuleData, setNewModuleData] = useState({
@@ -70,11 +71,14 @@ export default function CourseView() {
     videoUrl: '',
     thumbnailUrl: '',
     materialUrl: '',
-    moduleId: '',
+    moduleId: 0,
     order: 0
   });
   const [showEditModuleForm, setShowEditModuleForm] = useState(false);
   const [editingModule, setEditingModule] = useState<Module | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [moduleToDelete, setModuleToDelete] = useState<Module | null>(null);
+  const [secondConfirmation, setSecondConfirmation] = useState(false);
 
   useEffect(() => {
     const fetchCourse = async () => {
@@ -128,16 +132,27 @@ export default function CourseView() {
   const handleCreateModule = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.modules.create({
+      const moduleData = {
         ...newModuleData,
-        courseId,
+        courseId: parseInt(courseId),
         order: course?.modules.length || 0
-      });
+      };
+
+      console.log('Enviando dados do módulo:', moduleData);
+
+      const response = await api.modules.create(moduleData);
+      console.log('Resposta da criação do módulo:', response);
       
-      const updatedCourse = await api.courses.get(courseId);
+      const updatedCourse = await api.courses.get(parseInt(courseId));
       setCourse(updatedCourse);
       setShowNewModuleForm(false);
-      setNewModuleData({ title: '', description: '', thumbnailUrl: '', coverUrl: '', order: 0 });
+      setNewModuleData({
+        title: '',
+        description: '',
+        thumbnailUrl: '',
+        coverUrl: '',
+        order: 0
+      });
     } catch (error) {
       console.error('Erro ao criar módulo:', error);
       alert('Erro ao criar módulo');
@@ -155,7 +170,7 @@ export default function CourseView() {
       const updatedCourse = await api.courses.get(courseId);
       setCourse(updatedCourse);
       setShowNewLessonForm(false);
-      setNewLessonData({ title: '', description: '', content: '', videoUrl: '', thumbnailUrl: '', materialUrl: '', moduleId: '', order: 0 });
+      setNewLessonData({ title: '', description: '', content: '', videoUrl: '', thumbnailUrl: '', materialUrl: '', moduleId: 0, order: 0 });
     } catch (error) {
       console.error('Erro ao criar aula:', error);
       alert('Erro ao criar aula');
@@ -185,16 +200,31 @@ export default function CourseView() {
     }
   };
 
-  const handleDeleteModule = async (moduleId: number) => {
-    if (!confirm('Tem certeza que deseja excluir este módulo?')) return;
+  const handleDeleteClick = (module: Module, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setModuleToDelete(module);
+    setDeleteModalOpen(true);
+    setSecondConfirmation(false);
+  };
 
-    try {
-      await api.modules.delete(moduleId);
-      const updatedCourse = await api.courses.get(parseInt(courseId));
-      setCourse(updatedCourse);
-    } catch (error) {
-      console.error('Erro ao deletar módulo:', error);
-      alert('Erro ao deletar módulo');
+  const handleDeleteConfirm = async () => {
+    if (!secondConfirmation) {
+      setSecondConfirmation(true);
+      return;
+    }
+
+    if (moduleToDelete) {
+      try {
+        await api.modules.delete(moduleToDelete.id);
+        const updatedCourse = await api.courses.get(parseInt(courseId));
+        setCourse(updatedCourse);
+        setDeleteModalOpen(false);
+        setModuleToDelete(null);
+        setSecondConfirmation(false);
+      } catch (error) {
+        console.error('Erro ao deletar módulo:', error);
+        alert('Erro ao deletar módulo');
+      }
     }
   };
 
@@ -357,10 +387,7 @@ export default function CourseView() {
                       </button>
                       <button 
                         className="text-gray-400 hover:text-red-400 transition-colors"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteModule(module.id);
-                        }}
+                        onClick={(e) => handleDeleteClick(module, e)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -746,6 +773,24 @@ export default function CourseView() {
             </form>
           </div>
         </div>
+      )}
+
+      {deleteModalOpen && moduleToDelete && (
+        <ConfirmationModal
+          isOpen={deleteModalOpen}
+          onClose={() => {
+            setDeleteModalOpen(false);
+            setModuleToDelete(null);
+            setSecondConfirmation(false);
+          }}
+          onConfirm={handleDeleteConfirm}
+          title={secondConfirmation ? "Confirmação Final" : "Confirmar Exclusão"}
+          message={
+            secondConfirmation
+              ? `Tem certeza absoluta que deseja excluir o módulo "${moduleToDelete.title}"? Esta ação não pode ser desfeita.`
+              : `Você está prestes a excluir o módulo "${moduleToDelete.title}". Deseja continuar?`
+          }
+        />
       )}
     </div>
   );

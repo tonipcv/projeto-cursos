@@ -2,33 +2,59 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Plus } from 'lucide-react';
+import { Plus, Edit, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
-
-interface Course {
-  id: string;
-  title: string;
-  description: string;
-}
+import { Course } from '@/types';
+import { ConfirmationModal } from '@/components/ConfirmationModal';
 
 export default function HomePage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [courseToDelete, setCourseToDelete] = useState<Course | null>(null);
+  const [secondConfirmation, setSecondConfirmation] = useState(false);
 
   useEffect(() => {
-    const fetchCourses = async () => {
-      try {
-        const data = await api.courses.list();
-        setCourses(data);
-      } catch (error) {
-        console.error('Erro ao carregar cursos:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchCourses();
   }, []);
+
+  const fetchCourses = async () => {
+    try {
+      const data = await api.courses.list();
+      setCourses(data);
+    } catch (error) {
+      console.error('Erro ao carregar cursos:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteClick = (course: Course, e: React.MouseEvent) => {
+    e.preventDefault();
+    setCourseToDelete(course);
+    setDeleteModalOpen(true);
+    setSecondConfirmation(false);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!secondConfirmation) {
+      setSecondConfirmation(true);
+      return;
+    }
+
+    if (courseToDelete) {
+      try {
+        await api.courses.delete(courseToDelete.id);
+        await fetchCourses();
+        setDeleteModalOpen(false);
+        setCourseToDelete(null);
+        setSecondConfirmation(false);
+      } catch (error) {
+        console.error('Erro ao deletar curso:', error);
+        alert('Erro ao deletar curso');
+      }
+    }
+  };
 
   if (isLoading) {
     return (
@@ -72,27 +98,63 @@ export default function HomePage() {
             </div>
           ) : (
             courses.map((course) => (
-              <Link
+              <div
                 key={course.id}
-                href={`/courses/${course.id}`}
-                className="glass-effect rounded-xl p-6 border border-primary/10 hover:border-primary/30 transition-all group"
+                className="glass-effect rounded-xl p-6 border border-primary/10 hover:border-primary/30 transition-all group relative"
               >
-                <h2 className="text-xl font-semibold text-primary-light group-hover:text-primary transition-colors">
-                  {course.title}
-                </h2>
-                <p className="mt-2 text-gray-400 text-sm line-clamp-2">
-                  {course.description}
-                </p>
-                <div className="mt-4 flex justify-end">
-                  <span className="text-sm text-primary group-hover:text-primary-light transition-colors">
-                    Ver detalhes →
-                  </span>
+                {/* Botões de ação */}
+                <div className="absolute top-4 right-4 flex gap-2">
+                  <Link
+                    href={`/courses/edit/${course.id}`}
+                    className="p-2 text-gray-400 hover:text-primary transition-colors rounded-full hover:bg-primary/10"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Link>
+                  <button
+                    onClick={(e) => handleDeleteClick(course, e)}
+                    className="p-2 text-gray-400 hover:text-red-400 transition-colors rounded-full hover:bg-red-500/10"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
-              </Link>
+
+                {/* Conteúdo do card */}
+                <Link href={`/courses/${course.id}`}>
+                  <h2 className="text-xl font-semibold text-primary-light group-hover:text-primary transition-colors mt-4">
+                    {course.title}
+                  </h2>
+                  <p className="mt-2 text-gray-400 text-sm line-clamp-2">
+                    {course.description}
+                  </p>
+                  <div className="mt-4 flex justify-end">
+                    <span className="text-sm text-primary group-hover:text-primary-light transition-colors">
+                      Ver detalhes →
+                    </span>
+                  </div>
+                </Link>
+              </div>
             ))
           )}
         </div>
       </main>
+      {deleteModalOpen && courseToDelete && (
+        <ConfirmationModal
+          isOpen={deleteModalOpen}
+          onClose={() => {
+            setDeleteModalOpen(false);
+            setCourseToDelete(null);
+            setSecondConfirmation(false);
+          }}
+          onConfirm={handleDeleteConfirm}
+          title={secondConfirmation ? "Confirmação Final" : "Confirmar Exclusão"}
+          message={
+            secondConfirmation
+              ? `Tem certeza absoluta que deseja excluir o curso "${courseToDelete.title}"? Esta ação não pode ser desfeita.`
+              : `Você está prestes a excluir o curso "${courseToDelete.title}". Deseja continuar?`
+          }
+        />
+      )}
     </div>
   );
 }
