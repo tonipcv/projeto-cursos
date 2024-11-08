@@ -73,6 +73,8 @@ export default function CourseView() {
     moduleId: '',
     order: 0
   });
+  const [showEditModuleForm, setShowEditModuleForm] = useState(false);
+  const [editingModule, setEditingModule] = useState<Module | null>(null);
 
   useEffect(() => {
     const fetchCourse = async () => {
@@ -157,6 +159,42 @@ export default function CourseView() {
     } catch (error) {
       console.error('Erro ao criar aula:', error);
       alert('Erro ao criar aula');
+    }
+  };
+
+  const handleEditModule = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingModule) return;
+
+    try {
+      await api.modules.update(editingModule.id, {
+        title: editingModule.title,
+        description: editingModule.description,
+        thumbnailUrl: editingModule.thumbnailUrl,
+        coverUrl: editingModule.coverUrl,
+        order: editingModule.order
+      });
+      
+      const updatedCourse = await api.courses.get(parseInt(courseId));
+      setCourse(updatedCourse);
+      setShowEditModuleForm(false);
+      setEditingModule(null);
+    } catch (error) {
+      console.error('Erro ao atualizar módulo:', error);
+      alert('Erro ao atualizar módulo');
+    }
+  };
+
+  const handleDeleteModule = async (moduleId: number) => {
+    if (!confirm('Tem certeza que deseja excluir este módulo?')) return;
+
+    try {
+      await api.modules.delete(moduleId);
+      const updatedCourse = await api.courses.get(parseInt(courseId));
+      setCourse(updatedCourse);
+    } catch (error) {
+      console.error('Erro ao deletar módulo:', error);
+      alert('Erro ao deletar módulo');
     }
   };
 
@@ -307,10 +345,23 @@ export default function CourseView() {
                       </div>
                     </div>
                     <div className="flex space-x-2">
-                      <button className="text-gray-400 hover:text-white">
+                      <button 
+                        className="text-gray-400 hover:text-white transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingModule(module);
+                          setShowEditModuleForm(true);
+                        }}
+                      >
                         <Edit className="h-4 w-4" />
                       </button>
-                      <button className="text-gray-400 hover:text-red-400">
+                      <button 
+                        className="text-gray-400 hover:text-red-400 transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteModule(module.id);
+                        }}
+                      >
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
@@ -582,6 +633,114 @@ export default function CourseView() {
                   className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
                 >
                   Criar Aula
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Edição de Módulo */}
+      {showEditModuleForm && editingModule && (
+        <div className="fixed inset-0 bg-dark/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="glass-effect rounded-lg p-6 w-full max-w-md border border-primary/20">
+            <h3 className="text-xl font-bold text-white mb-4">Editar Módulo</h3>
+            <form onSubmit={handleEditModule} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Título
+                </label>
+                <input
+                  type="text"
+                  value={editingModule.title}
+                  onChange={(e) => setEditingModule({
+                    ...editingModule,
+                    title: e.target.value
+                  })}
+                  className="w-full px-3 py-2 bg-dark-lighter border border-primary/10 rounded-lg text-white focus:border-primary transition-colors"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Descrição
+                </label>
+                <textarea
+                  value={editingModule.description}
+                  onChange={(e) => setEditingModule({
+                    ...editingModule,
+                    description: e.target.value
+                  })}
+                  className="w-full px-3 py-2 bg-dark-lighter border border-primary/10 rounded-lg text-white focus:border-primary transition-colors"
+                  rows={3}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  URL da Thumbnail
+                </label>
+                <input
+                  type="url"
+                  value={editingModule.thumbnailUrl || ''}
+                  onChange={(e) => setEditingModule({
+                    ...editingModule,
+                    thumbnailUrl: e.target.value
+                  })}
+                  className="w-full px-3 py-2 bg-dark-lighter border border-primary/10 rounded-lg text-white focus:border-primary transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  URL da Capa
+                </label>
+                <input
+                  type="url"
+                  value={editingModule.coverUrl || ''}
+                  onChange={(e) => setEditingModule({
+                    ...editingModule,
+                    coverUrl: e.target.value
+                  })}
+                  className="w-full px-3 py-2 bg-dark-lighter border border-primary/10 rounded-lg text-white focus:border-primary transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Ordem
+                </label>
+                <input
+                  type="number"
+                  value={editingModule.order}
+                  onChange={(e) => setEditingModule({
+                    ...editingModule,
+                    order: parseInt(e.target.value)
+                  })}
+                  className="w-full px-3 py-2 bg-dark-lighter border border-primary/10 rounded-lg text-white focus:border-primary transition-colors"
+                  min="0"
+                  required
+                />
+              </div>
+
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditModuleForm(false);
+                    setEditingModule(null);
+                  }}
+                  className="px-4 py-2 text-gray-300 hover:text-white transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                >
+                  Salvar Alterações
                 </button>
               </div>
             </form>
