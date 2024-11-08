@@ -11,6 +11,15 @@ export interface Course {
   updatedAt: string;
 }
 
+export interface CreateModuleData {
+  courseId: number;
+  title: string;
+  description?: string | null;
+  thumbnailUrl?: string | null;
+  coverUrl?: string | null;
+  order: number;
+}
+
 export interface Module {
   id: number;
   courseId: number;
@@ -20,7 +29,6 @@ export interface Module {
   coverUrl: string | null;
   order: number;
   lessons: Lesson[];
-  lessonsCount?: number;
   createdAt: string;
   updatedAt: string;
 }

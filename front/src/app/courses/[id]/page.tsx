@@ -5,7 +5,7 @@ import { api } from '@/lib/api';
 import { Plus, Edit, Trash2, PlayCircle, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import type { Course, Module, Lesson } from '@/types/course';
+import type { Course, Module, Lesson, CreateModuleData } from '@/types/course';
 import CreateModuleForm from '@/components/admin/CreateModuleForm';
 import CreateLessonForm from '@/components/admin/CreateLessonForm';
 
@@ -57,10 +57,14 @@ export default function CourseView({ params }: { params: { id: string } }) {
     }
   };
 
-  const handleUpdateModule = async (moduleData: Partial<Module>) => {
+  const handleUpdateModule = async (moduleData: Partial<CreateModuleData>) => {
     if (!editingModule) return;
     try {
-      await api.modules.update(editingModule.id, moduleData);
+      await api.modules.update(editingModule.id, {
+        title: moduleData.title,
+        description: moduleData.description || null,
+        order: moduleData.order
+      });
       await fetchCourse();
       setEditingModule(null);
     } catch (error) {
