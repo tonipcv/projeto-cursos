@@ -16,7 +16,7 @@ import { useParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { ConfirmationModal } from '@/components/ConfirmationModal';
 import { Course, Module, Lesson } from '@/types/course';
-import { CreateLessonModal } from '@/components/CreateLessonModal';
+import CreateLessonModal from '@/components/CreateLessonModal';
 
 interface CourseStats {
   totalModules: number;
@@ -57,37 +57,20 @@ export default function CourseView() {
   const [moduleToDelete, setModuleToDelete] = useState<Module | null>(null);
   const [secondConfirmation, setSecondConfirmation] = useState(false);
   const [showNewLessonModal, setShowNewLessonModal] = useState(false);
+  const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
+  const [lessonToDelete, setLessonToDelete] = useState<Lesson | null>(null);
+
+  const fetchCourse = async () => {
+    try {
+      const data = await api.courses.get(parseInt(courseId));
+      setCourse(data);
+    } catch (error) {
+      console.error('Erro ao carregar curso:', error);
+    }
+  };
 
   useEffect(() => {
-    const fetchCourse = async () => {
-      try {
-        const data = await api.courses.get(parseInt(courseId));
-        setCourse(data);
-        
-        if (data.modules.length > 0) {
-          setActiveModuleId(data.modules[0].id);
-        }
-
-        // Atualizar estatísticas
-        setStats({
-          totalModules: data.modules.length,
-          totalLessons: data.modules.reduce(
-            (acc: number, module: Module) => acc + module.lessons.length, 
-            0
-          ),
-          totalDuration: 'N/A', // Removida a lógica de duração
-          completionRate: 0
-        });
-      } catch (error) {
-        console.error('Erro ao carregar curso:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (courseId) {
-      fetchCourse();
-    }
+    fetchCourse();
   }, [courseId]);
 
   const handleCreateModule = async (e: React.FormEvent) => {
@@ -190,20 +173,14 @@ export default function CourseView() {
   };
 
   const handleEditLesson = (lesson: Lesson) => {
-    setEditingModule(lesson);
+    setEditingLesson(lesson);
     setShowNewLessonForm(true);
   };
 
-  const handleDeleteLesson = (lessonId: number) => {
-    const lessonToDelete = course?.modules
-      .find(m => m.lessons.some(l => l.id === lessonId))
-      ?.lessons.find(l => l.id === lessonId);
-
-    if (lessonToDelete) {
-      setModuleToDelete(lessonToDelete);
-      setDeleteModalOpen(true);
-      setSecondConfirmation(false);
-    }
+  const handleDeleteLesson = (lesson: Lesson) => {
+    setLessonToDelete(lesson);
+    setDeleteModalOpen(true);
+    setSecondConfirmation(false);
   };
 
   if (isLoading) {
@@ -432,7 +409,7 @@ export default function CourseView() {
                           <Edit className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => handleDeleteLesson(lesson.id)}
+                          onClick={() => handleDeleteLesson(lesson)}
                           className="p-2 text-gray-400 hover:text-red-400 transition-colors"
                         >
                           <Trash2 className="h-4 w-4" />

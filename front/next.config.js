@@ -5,14 +5,6 @@ const nextConfig = {
   },
   images: {
     domains: ['cursos-api-cursos.dpbdp1.easypanel.host'],
-  },
-  async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: 'https://cursos-api-cursos.dpbdp1.easypanel.host/:path*',
-      },
-    ]
   }
 }
 
