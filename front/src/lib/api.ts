@@ -159,13 +159,38 @@ export const api = {
     },
 
     // Criar uma nova aula
-    create: async (data: CreateLessonData) => {
+    create: async (data: {
+      moduleId: number;
+      title: string;
+      content?: string;
+      videoUrl?: string;
+      thumbnailUrl?: string;
+      materialUrl?: string;
+      order: number;
+    }) => {
+      console.log('Dados enviados para API:', data); // Debug
       const response = await fetch(`${API_URL}/lessons`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          moduleId: Number(data.moduleId), // Garantindo que é número
+          title: data.title,
+          content: data.content || null,
+          videoUrl: data.videoUrl || null,
+          thumbnailUrl: data.thumbnailUrl || null,
+          materialUrl: data.materialUrl || null,
+          order: Number(data.order) // Garantindo que é número
+        })
       });
-      if (!response.ok) throw new Error('Falha ao criar aula');
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error('Erro da API:', errorData); // Debug
+        throw new Error(`Erro ao criar aula: ${errorData}`);
+      }
+
       return response.json();
     },
 

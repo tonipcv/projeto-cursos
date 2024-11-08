@@ -2,20 +2,27 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
-import type { Course } from '@/types/course';
+import type { Course, Module } from '@/types/course';
+
+interface CourseWithCounts extends Course {
+  modulesCount: number;
+  lessonsCount: number;
+}
 
 export default function DashboardPage() {
-  const [courses, setCourses] = useState<Course[]>([]);
+  const [courses, setCourses] = useState<CourseWithCounts[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchCourses = async () => {
       try {
         const data = await api.courses.list();
-        const coursesWithCounts = data.map(course => ({
+        const coursesWithCounts = data.map((course: Course) => ({
           ...course,
           modulesCount: course.modules.length,
-          lessonsCount: course.modules.reduce((acc, module) => acc + module.lessons.length, 0)
+          lessonsCount: course.modules.reduce((acc: number, module: Module) => 
+            acc + module.lessons.length, 0
+          )
         }));
         setCourses(coursesWithCounts);
       } catch (error) {
