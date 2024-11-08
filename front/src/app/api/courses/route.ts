@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+
+const API_URL = 'https://cursos-api-cursos.dpbdp1.easypanel.host';
+
+export const runtime = 'edge';
 
 export async function GET() {
   try {
-    const courses = await prisma.course.findMany({
-      orderBy: {
-        createdAt: 'desc'
-      }
-    });
-
+    const response = await fetch(`${API_URL}/courses`);
+    const courses = await response.json();
     return NextResponse.json(courses);
   } catch (error) {
     console.error('Erro ao buscar cursos:', error);
@@ -22,14 +21,16 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const data = await request.json();
-    const course = await prisma.course.create({
-      data: {
-        title: data.title,
-        description: data.description,
+    const response = await fetch(`${API_URL}/courses`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify(data)
     });
-
-    return NextResponse.json(course);
+    
+    const course = await response.json();
+    return NextResponse.json(course, { status: 201 });
   } catch (error) {
     console.error('Erro ao criar curso:', error);
     return NextResponse.json(

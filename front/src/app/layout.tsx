@@ -16,3 +16,8 @@ export default function RootLayout({
     </html>
   )
 }
+
+export const metadata = {
+  title: 'Plataforma de Cursos',
+  description: 'Gerencie seus cursos de forma simples e eficiente',
+}

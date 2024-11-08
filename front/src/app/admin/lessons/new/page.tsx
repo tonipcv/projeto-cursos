@@ -7,6 +7,13 @@ import Link from 'next/link';
 import Image from 'next/image';
 import type { Course, Module } from '@/types/course';
 
+// Adicione a verificação de tipo
+declare global {
+  interface Window {
+    PandaPlayer?: PandaPlayerConstructor;
+  }
+}
+
 export default function NewLesson() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
@@ -158,13 +165,12 @@ export default function NewLesson() {
   }, []);
 
   useEffect(() => {
-    // Reinicializa o player do Panda quando o código embed muda
     if (formData.embedUrl) {
       const videoId = extractPandaVideoId(formData.embedUrl);
       if (videoId && window.PandaPlayer) {
-        new window.PandaPlayer(videoId, {
+        const player = new window.PandaPlayer(videoId, {
           onReady() {
-            this.loadButtonInTime({ fetchApi: true });
+            player.loadButtonInTime({ fetchApi: true });
           },
           library_id: 'vz-7b6cf9e4-8bf',
           video_external_id: videoId,

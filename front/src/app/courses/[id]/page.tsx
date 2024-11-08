@@ -12,33 +12,10 @@ import {
   Plus
 } from 'lucide-react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { ConfirmationModal } from '@/components/ConfirmationModal';
-
-interface Lesson {
-  id: number;
-  title: string;
-  description: string | null;
-  duration: string | null;
-  videoId: string | null;
-  order: number;
-}
-
-interface Module {
-  id: number;
-  title: string;
-  description: string;
-  order: number;
-  lessons: Lesson[];
-}
-
-interface Course {
-  id: number;
-  title: string;
-  description: string;
-  modules: Module[];
-}
+import { Course, Module, Lesson } from '@/types/course';
 
 interface CourseStats {
   totalModules: number;
@@ -49,7 +26,6 @@ interface CourseStats {
 
 export default function CourseView() {
   const params = useParams();
-  const router = useRouter();
   const courseId = params.id as string;
   const [course, setCourse] = useState<Course | null>(null);
   const [stats, setStats] = useState<CourseStats | null>(null);
@@ -83,39 +59,22 @@ export default function CourseView() {
   useEffect(() => {
     const fetchCourse = async () => {
       try {
-        const data = await api.courses.get(courseId);
+        const data = await api.courses.get(parseInt(courseId));
         setCourse(data);
         
         if (data.modules.length > 0) {
           setActiveModuleId(data.modules[0].id);
         }
 
-        // Calcular estatísticas reais
-        const totalModules = data.modules.length;
-        const totalLessons = data.modules.reduce(
-          (acc: number, module: Module) => acc + module.lessons.length, 
-          0
-        );
-        
-        // Calcular duração total
-        const totalMinutes = data.modules.reduce((acc: number, module: Module) => {
-          return acc + module.lessons.reduce((lessonAcc: number, lesson: Lesson) => {
-            if (lesson.duration) {
-              const [minutes, seconds] = lesson.duration.split(':').map(Number);
-              return lessonAcc + minutes + (seconds / 60);
-            }
-            return lessonAcc;
-          }, 0);
-        }, 0);
-        
-        const hours = Math.floor(totalMinutes / 60);
-        const minutes = Math.round(totalMinutes % 60);
-        
+        // Atualizar estatísticas
         setStats({
-          totalModules,
-          totalLessons,
-          totalDuration: `${hours}h ${minutes}min`,
-          completionRate: 0 // Implementar lógica de progresso quando necessário
+          totalModules: data.modules.length,
+          totalLessons: data.modules.reduce(
+            (acc: number, module: Module) => acc + module.lessons.length, 
+            0
+          ),
+          totalDuration: 'N/A', // Removida a lógica de duração
+          completionRate: 0
         });
       } catch (error) {
         console.error('Erro ao carregar curso:', error);
@@ -167,7 +126,7 @@ export default function CourseView() {
         order: course?.modules.find(m => m.id === newLessonData.moduleId)?.lessons.length || 0
       });
       
-      const updatedCourse = await api.courses.get(courseId);
+      const updatedCourse = await api.courses.get(parseInt(courseId));
       setCourse(updatedCourse);
       setShowNewLessonForm(false);
       setNewLessonData({ title: '', description: '', content: '', videoUrl: '', thumbnailUrl: '', materialUrl: '', moduleId: 0, order: 0 });
@@ -183,10 +142,10 @@ export default function CourseView() {
 
     try {
       await api.modules.update(editingModule.id, {
-        title: editingModule.title,
-        description: editingModule.description,
-        thumbnailUrl: editingModule.thumbnailUrl,
-        coverUrl: editingModule.coverUrl,
+        title: editingModule.title || '',
+        description: editingModule.description || '',
+        thumbnailUrl: editingModule.thumbnailUrl || '',
+        coverUrl: editingModule.coverUrl || '',
         order: editingModule.order
       });
       
@@ -430,14 +389,9 @@ export default function CourseView() {
                   <div className="flex items-start justify-between">
                     <div>
                       <h3 className="font-semibold text-white">{lesson.title}</h3>
-                      <p className="text-sm text-gray-300 mt-1">{lesson.description}</p>
+                      <p className="text-sm text-gray-300 mt-1">{lesson.content}</p>
                     </div>
                     <div className="flex items-center space-x-4">
-                      {lesson.duration && (
-                        <span className="text-sm text-gray-400 bg-gray-700 px-2 py-1 rounded">
-                          {lesson.duration}
-                        </span>
-                      )}
                       <div className="flex space-x-2">
                         <button className="text-gray-400 hover:text-white">
                           <Edit className="h-4 w-4" />
@@ -694,14 +648,13 @@ export default function CourseView() {
                   Descrição
                 </label>
                 <textarea
-                  value={editingModule.description}
+                  value={editingModule.description || ''}
                   onChange={(e) => setEditingModule({
                     ...editingModule,
                     description: e.target.value
                   })}
                   className="w-full px-3 py-2 bg-dark-lighter border border-primary/10 rounded-lg text-white focus:border-primary transition-colors"
                   rows={3}
-                  required
                 />
               </div>
 
@@ -787,7 +740,7 @@ export default function CourseView() {
           title={secondConfirmation ? "Confirmação Final" : "Confirmar Exclusão"}
           message={
             secondConfirmation
-              ? `Tem certeza absoluta que deseja excluir o módulo "${moduleToDelete.title}"? Esta ação não pode ser desfeita.`
+              ? `Tem certeza absoluta que deseja excluir o módulo "${moduleToDelete.title}"? Esta aão não pode ser desfeita.`
               : `Você está prestes a excluir o módulo "${moduleToDelete.title}". Deseja continuar?`
           }
         />

@@ -33,4 +33,11 @@ export interface Lesson {
   order: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CourseStats {
+  totalModules: number;
+  totalLessons: number;
+  totalDuration: string;
+  completionRate: number;
 } 

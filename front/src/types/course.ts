@@ -1,33 +1,39 @@
 export interface Course {
-  id: string;
+  id: number;
   title: string;
-  description: string;
-  modulesCount: number;
-  lessonsCount: number;
+  description: string | null;
+  thumbnailUrl: string | null;
+  coverUrl: string | null;
+  modules: Module[];
+  modulesCount?: number;
+  lessonsCount?: number;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface Module {
-  id: string;
+  id: number;
+  courseId: number;
   title: string;
-  description: string;
-  courseId: string;
+  description: string | null;
+  thumbnailUrl: string | null;
+  coverUrl: string | null;
   order: number;
-  course?: Course;
-  lessons?: Lesson[];
+  lessons: Lesson[];
+  lessonsCount?: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Lesson {
-  id: string;
+  id: number;
+  moduleId: number;
   title: string;
-  description: string | null;
-  videoId: string | null;
-  embedUrl: string | null;
-  videoType: string | null;
-  thumbnail: string | null;
-  duration: string | null;
+  content: string | null;
+  videoUrl: string | null;
+  thumbnailUrl: string | null;
+  materialUrl: string | null;
   order: number;
-  moduleId: string;
-  module?: Module;
+  createdAt: string;
+  updatedAt: string;
 } 

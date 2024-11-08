@@ -7,6 +7,16 @@ import Link from 'next/link';
 import type { Course, Module } from '@/types/course';
 import Image from 'next/image';
 
+interface FormData {
+  title: string;
+  description: string;
+  embedUrl: string;
+  duration: string;
+  moduleId: string;
+  order: number;
+  thumbnailUrl: string;
+}
+
 export default function EditLesson() {
   const router = useRouter();
   const params = useParams();
@@ -16,13 +26,14 @@ export default function EditLesson() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [modules, setModules] = useState<Module[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState('');
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     title: '',
     description: '',
     embedUrl: '',
     duration: '',
     moduleId: '',
-    order: 0
+    order: 0,
+    thumbnailUrl: ''
   });
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -62,7 +73,8 @@ export default function EditLesson() {
           embedUrl: lessonData.embedUrl || '',
           duration: lessonData.duration || '',
           moduleId: lessonData.moduleId,
-          order: lessonData.order
+          order: lessonData.order,
+          thumbnailUrl: lessonData.thumbnailUrl || ''
         });
       } catch (error) {
         console.error('Erro ao carregar dados:', error);
@@ -137,7 +149,7 @@ export default function EditLesson() {
       if (!response.ok) throw new Error('Falha ao fazer upload');
       
       const data = await response.json();
-      setFormData(prev => ({ ...prev, thumbnail: data.url }));
+      setFormData(prev => ({ ...prev, thumbnailUrl: data.url }));
     } catch (error) {
       console.error('Erro ao fazer upload:', error);
       alert('Erro ao fazer upload da imagem');
@@ -312,10 +324,10 @@ export default function EditLesson() {
                   htmlFor="thumbnail"
                   className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-700 rounded-lg cursor-pointer hover:border-violet-500 transition-colors"
                 >
-                  {thumbnailPreview || formData.thumbnail ? (
+                  {thumbnailPreview || formData.thumbnailUrl ? (
                     <div className="relative w-full h-full">
                       <Image
-                        src={thumbnailPreview || formData.thumbnail}
+                        src={thumbnailPreview || formData.thumbnailUrl}
                         alt="Thumbnail preview"
                         fill
                         className="object-cover rounded-lg"
@@ -342,12 +354,12 @@ export default function EditLesson() {
                   />
                 </label>
               </div>
-              {(thumbnailPreview || formData.thumbnail) && (
+              {(thumbnailPreview || formData.thumbnailUrl) && (
                 <button
                   type="button"
                   onClick={() => {
                     setThumbnailPreview(null);
-                    setFormData(prev => ({ ...prev, thumbnail: '' }));
+                    setFormData(prev => ({ ...prev, thumbnailUrl: '' }));
                   }}
                   className="p-2 text-gray-400 hover:text-red-500 transition-colors"
                 >
