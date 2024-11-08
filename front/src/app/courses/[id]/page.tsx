@@ -16,6 +16,7 @@ import { useParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { ConfirmationModal } from '@/components/ConfirmationModal';
 import { Course, Module, Lesson } from '@/types/course';
+import { CreateLessonModal } from '@/components/CreateLessonModal';
 
 interface CourseStats {
   totalModules: number;
@@ -55,6 +56,7 @@ export default function CourseView() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [moduleToDelete, setModuleToDelete] = useState<Module | null>(null);
   const [secondConfirmation, setSecondConfirmation] = useState(false);
+  const [showNewLessonModal, setShowNewLessonModal] = useState(false);
 
   useEffect(() => {
     const fetchCourse = async () => {
@@ -184,6 +186,23 @@ export default function CourseView() {
         console.error('Erro ao deletar módulo:', error);
         alert('Erro ao deletar módulo');
       }
+    }
+  };
+
+  const handleEditLesson = (lesson: Lesson) => {
+    setEditingModule(lesson);
+    setShowNewLessonForm(true);
+  };
+
+  const handleDeleteLesson = (lessonId: number) => {
+    const lessonToDelete = course?.modules
+      .find(m => m.lessons.some(l => l.id === lessonId))
+      ?.lessons.find(l => l.id === lessonId);
+
+    if (lessonToDelete) {
+      setModuleToDelete(lessonToDelete);
+      setDeleteModalOpen(true);
+      setSecondConfirmation(false);
     }
   };
 
@@ -360,54 +379,78 @@ export default function CourseView() {
           {/* Lista de Aulas */}
           <div className="lg:col-span-2">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-white flex items-center">
+              <h2 className="text-xl font-bold text-primary-light flex items-center">
                 <PlayCircle className="mr-2" />
                 Aulas
               </h2>
               {activeModuleId && (
                 <button
-                  onClick={() => {
-                    setNewLessonData(prev => ({ ...prev, moduleId: activeModuleId }));
-                    setShowNewLessonForm(true);
-                  }}
-                  className="flex items-center px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  onClick={() => setShowNewLessonModal(true)}
+                  className="flex items-center gap-2 px-3 py-1 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
                 >
-                  <Plus className="h-4 w-4 mr-1" />
+                  <Plus className="h-4 w-4" />
                   Nova Aula
                 </button>
               )}
             </div>
+
             <div className="space-y-4">
-              {activeModuleId && course.modules
-                .find(m => m.id === activeModuleId)?.lessons
-                .sort((a, b) => a.order - b.order)
+              {activeModuleId && course?.modules
+                .find(m => m.id === activeModuleId)
+                ?.lessons.sort((a, b) => a.order - b.order)
                 .map((lesson) => (
-                <div 
-                  key={lesson.id}
-                  className="p-4 bg-gray-800 rounded-lg border border-gray-700 hover:border-blue-500 transition-colors"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-semibold text-white">{lesson.title}</h3>
-                      <p className="text-sm text-gray-300 mt-1">{lesson.content}</p>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <div className="flex space-x-2">
-                        <button className="text-gray-400 hover:text-white">
+                  <div 
+                    key={lesson.id}
+                    className="glass-effect rounded-lg p-4 border border-primary/10 hover:border-primary/30 transition-all group"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h3 className="font-semibold text-primary-light group-hover:text-primary transition-colors">
+                          {lesson.title}
+                        </h3>
+                        {lesson.content && (
+                          <p className="mt-1 text-sm text-gray-400">
+                            {lesson.content}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {lesson.videoUrl && (
+                          <a
+                            href={lesson.videoUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 text-primary hover:text-primary-light transition-colors"
+                          >
+                            <PlayCircle className="h-4 w-4" />
+                          </a>
+                        )}
+                        <button
+                          onClick={() => handleEditLesson(lesson)}
+                          className="p-2 text-gray-400 hover:text-primary transition-colors"
+                        >
                           <Edit className="h-4 w-4" />
                         </button>
-                        <button className="text-gray-400 hover:text-red-400">
+                        <button
+                          onClick={() => handleDeleteLesson(lesson.id)}
+                          className="p-2 text-gray-400 hover:text-red-400 transition-colors"
+                        >
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
                     </div>
+                    {lesson.materialUrl && (
+                      <a
+                        href={lesson.materialUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-2 inline-flex items-center text-sm text-primary hover:text-primary-light transition-colors"
+                      >
+                        Material complementar →
+                      </a>
+                    )}
                   </div>
-                  <button className="mt-4 flex items-center text-blue-400 hover:text-blue-300 transition-colors">
-                    <PlayCircle className="mr-2 h-5 w-5" />
-                    Assistir aula
-                  </button>
-                </div>
-              ))}
+                ))}
             </div>
           </div>
         </div>
@@ -743,6 +786,19 @@ export default function CourseView() {
               ? `Tem certeza absoluta que deseja excluir o módulo "${moduleToDelete.title}"? Esta aão não pode ser desfeita.`
               : `Você está prestes a excluir o módulo "${moduleToDelete.title}". Deseja continuar?`
           }
+        />
+      )}
+
+      {/* Modal de Nova Aula */}
+      {showNewLessonModal && (
+        <CreateLessonModal
+          moduleId={activeModuleId!}
+          isOpen={showNewLessonModal}
+          onClose={() => setShowNewLessonModal(false)}
+          onSuccess={() => {
+            fetchCourse();
+            setShowNewLessonModal(false);
+          }}
         />
       )}
     </div>
