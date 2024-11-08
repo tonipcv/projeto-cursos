@@ -5,17 +5,15 @@ import {
   ArrowLeft, 
   PlayCircle, 
   BookOpen, 
-  CheckCircle,
-  Plus,
   BarChart,
   Clock,
-  Users,
-  Settings,
   Edit,
-  Trash2
+  Trash2,
+  Plus
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
+import { api } from '@/lib/api';
 
 interface Lesson {
   id: string;
@@ -58,32 +56,60 @@ export default function CourseView() {
   const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
   const [showNewModuleForm, setShowNewModuleForm] = useState(false);
   const [showNewLessonForm, setShowNewLessonForm] = useState(false);
-  const [newModuleData, setNewModuleData] = useState({ title: '', description: '' });
-  const [newLessonData, setNewLessonData] = useState({ 
-    title: '', 
-    description: '', 
+  const [newModuleData, setNewModuleData] = useState({
+    title: '',
+    description: '',
+    thumbnailUrl: '',
+    coverUrl: '',
+    order: 0
+  });
+  const [newLessonData, setNewLessonData] = useState({
+    title: '',
+    description: '',
+    content: '',
+    videoUrl: '',
+    thumbnailUrl: '',
+    materialUrl: '',
     moduleId: '',
-    duration: '',
-    videoId: '' 
+    order: 0
   });
 
   useEffect(() => {
     const fetchCourse = async () => {
       try {
-        const response = await fetch(`/api/courses/${courseId}`);
-        if (!response.ok) throw new Error('Falha ao carregar curso');
-        const data = await response.json();
+        const data = await api.courses.get(courseId);
         setCourse(data);
+        
         if (data.modules.length > 0) {
           setActiveModuleId(data.modules[0].id);
         }
 
-        // Simular estatísticas do curso (substitua por chamada real à API)
+        // Calcular estatísticas reais
+        const totalModules = data.modules.length;
+        const totalLessons = data.modules.reduce(
+          (acc: number, module: Module) => acc + module.lessons.length, 
+          0
+        );
+        
+        // Calcular duração total
+        const totalMinutes = data.modules.reduce((acc: number, module: Module) => {
+          return acc + module.lessons.reduce((lessonAcc: number, lesson: Lesson) => {
+            if (lesson.duration) {
+              const [minutes, seconds] = lesson.duration.split(':').map(Number);
+              return lessonAcc + minutes + (seconds / 60);
+            }
+            return lessonAcc;
+          }, 0);
+        }, 0);
+        
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = Math.round(totalMinutes % 60);
+        
         setStats({
-          totalModules: data.modules.length,
-          totalLessons: data.modules.reduce((acc: number, module: Module) => acc + module.lessons.length, 0),
-          totalDuration: '10h 30min',
-          completionRate: 75
+          totalModules,
+          totalLessons,
+          totalDuration: `${hours}h ${minutes}min`,
+          completionRate: 0 // Implementar lógica de progresso quando necessário
         });
       } catch (error) {
         console.error('Erro ao carregar curso:', error);
@@ -100,23 +126,16 @@ export default function CourseView() {
   const handleCreateModule = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch('/api/modules', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...newModuleData,
-          courseId,
-          order: course?.modules.length || 0
-        }),
+      await api.modules.create({
+        ...newModuleData,
+        courseId,
+        order: course?.modules.length || 0
       });
-
-      if (!response.ok) throw new Error('Falha ao criar módulo');
       
-      // Recarregar curso para mostrar novo módulo
-      const updatedCourse = await fetch(`/api/courses/${courseId}`).then(res => res.json());
+      const updatedCourse = await api.courses.get(courseId);
       setCourse(updatedCourse);
       setShowNewModuleForm(false);
-      setNewModuleData({ title: '', description: '' });
+      setNewModuleData({ title: '', description: '', thumbnailUrl: '', coverUrl: '', order: 0 });
     } catch (error) {
       console.error('Erro ao criar módulo:', error);
       alert('Erro ao criar módulo');
@@ -126,22 +145,15 @@ export default function CourseView() {
   const handleCreateLesson = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch('/api/lessons', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...newLessonData,
-          order: course?.modules.find(m => m.id === newLessonData.moduleId)?.lessons.length || 0
-        }),
+      await api.lessons.create({
+        ...newLessonData,
+        order: course?.modules.find(m => m.id === newLessonData.moduleId)?.lessons.length || 0
       });
-
-      if (!response.ok) throw new Error('Falha ao criar aula');
       
-      // Recarregar curso para mostrar nova aula
-      const updatedCourse = await fetch(`/api/courses/${courseId}`).then(res => res.json());
+      const updatedCourse = await api.courses.get(courseId);
       setCourse(updatedCourse);
       setShowNewLessonForm(false);
-      setNewLessonData({ title: '', description: '', moduleId: '', duration: '', videoId: '' });
+      setNewLessonData({ title: '', description: '', content: '', videoUrl: '', thumbnailUrl: '', materialUrl: '', moduleId: '', order: 0 });
     } catch (error) {
       console.error('Erro ao criar aula:', error);
       alert('Erro ao criar aula');
@@ -150,10 +162,10 @@ export default function CourseView() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-900 p-8">
+      <div className="min-h-screen bg-dark p-8">
         <div className="flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-          <span className="ml-2 text-white">Carregando curso...</span>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <span className="ml-2 text-gray-300">Carregando curso...</span>
         </div>
       </div>
     );
@@ -170,14 +182,14 @@ export default function CourseView() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-dark to-dark-lighter">
       {/* Header */}
-      <header className="bg-gray-800 border-b border-gray-700 p-4">
+      <header className="bg-dark-card border-b border-primary/20 p-4">
         <div className="container mx-auto">
           <div className="flex justify-between items-center mb-4">
             <Link 
               href="/"
-              className="text-gray-300 hover:text-white flex items-center"
+              className="text-gray-300 hover:text-primary flex items-center transition-colors"
             >
               <ArrowLeft className="mr-2 h-5 w-5" />
               Voltar para Home
@@ -185,21 +197,21 @@ export default function CourseView() {
             <div className="flex space-x-2">
               <Link
                 href={`/admin/courses/edit/${course.id}`}
-                className="flex items-center px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                className="flex items-center px-3 py-1 bg-primary/20 text-primary hover:bg-primary/30 rounded transition-colors"
               >
                 <Edit className="h-4 w-4 mr-1" />
                 Editar Curso
               </Link>
               <button
                 onClick={() => setShowNewModuleForm(true)}
-                className="flex items-center px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+                className="flex items-center px-3 py-1 bg-primary text-white rounded hover:bg-primary-dark transition-colors"
               >
                 <Plus className="h-4 w-4 mr-1" />
                 Novo Módulo
               </button>
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-white">{course.title}</h1>
+          <h1 className="text-2xl font-bold text-primary-light">{course.title}</h1>
           <p className="text-gray-400 mt-2">{course.description}</p>
         </div>
       </header>
@@ -208,40 +220,47 @@ export default function CourseView() {
       {stats && (
         <div className="container mx-auto px-4 py-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-              <div className="flex items-center justify-between">
+            {/* Total de Módulos */}
+            <div className="glass-effect rounded-lg border border-primary/10">
+              <div className="flex items-center justify-between p-4">
                 <div>
                   <p className="text-gray-400 text-sm">Total de Módulos</p>
-                  <h3 className="text-xl font-bold text-white">{stats.totalModules}</h3>
+                  <h3 className="text-xl font-bold text-primary-light">{stats.totalModules}</h3>
                 </div>
-                <BookOpen className="h-8 w-8 text-blue-400" />
+                <BookOpen className="h-8 w-8 text-primary" />
               </div>
             </div>
-            <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-              <div className="flex items-center justify-between">
+
+            {/* Total de Aulas */}
+            <div className="glass-effect rounded-lg border border-primary/10">
+              <div className="flex items-center justify-between p-4">
                 <div>
                   <p className="text-gray-400 text-sm">Total de Aulas</p>
-                  <h3 className="text-xl font-bold text-white">{stats.totalLessons}</h3>
+                  <h3 className="text-xl font-bold text-primary-light">{stats.totalLessons}</h3>
                 </div>
-                <PlayCircle className="h-8 w-8 text-green-400" />
+                <PlayCircle className="h-8 w-8 text-primary" />
               </div>
             </div>
-            <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-              <div className="flex items-center justify-between">
+
+            {/* Duração Total */}
+            <div className="glass-effect rounded-lg border border-primary/10">
+              <div className="flex items-center justify-between p-4">
                 <div>
                   <p className="text-gray-400 text-sm">Duração Total</p>
-                  <h3 className="text-xl font-bold text-white">{stats.totalDuration}</h3>
+                  <h3 className="text-xl font-bold text-primary-light">{stats.totalDuration}</h3>
                 </div>
-                <Clock className="h-8 w-8 text-purple-400" />
+                <Clock className="h-8 w-8 text-primary" />
               </div>
             </div>
-            <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-              <div className="flex items-center justify-between">
+
+            {/* Taxa de Conclusão */}
+            <div className="glass-effect rounded-lg border border-primary/10">
+              <div className="flex items-center justify-between p-4">
                 <div>
                   <p className="text-gray-400 text-sm">Taxa de Conclusão</p>
-                  <h3 className="text-xl font-bold text-white">{stats.completionRate}%</h3>
+                  <h3 className="text-xl font-bold text-primary-light">{stats.completionRate}%</h3>
                 </div>
-                <BarChart className="h-8 w-8 text-orange-400" />
+                <BarChart className="h-8 w-8 text-primary" />
               </div>
             </div>
           </div>
@@ -253,13 +272,13 @@ export default function CourseView() {
           {/* Lista de Módulos */}
           <div className="lg:col-span-1">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-white flex items-center">
+              <h2 className="text-xl font-bold text-primary-light flex items-center">
                 <BookOpen className="mr-2" />
                 Módulos do Curso
               </h2>
               <button
                 onClick={() => setShowNewModuleForm(true)}
-                className="text-blue-400 hover:text-blue-300"
+                className="text-primary hover:text-primary-light transition-colors"
               >
                 <Plus className="h-5 w-5" />
               </button>
@@ -270,10 +289,10 @@ export default function CourseView() {
                 .map((module) => (
                 <div 
                   key={module.id}
-                  className={`p-4 rounded-lg border transition-colors cursor-pointer
+                  className={`glass-effect rounded-lg transition-all cursor-pointer border
                     ${activeModuleId === module.id 
-                      ? 'bg-blue-600 border-blue-500' 
-                      : 'bg-gray-800 border-gray-700 hover:border-blue-500'
+                      ? 'bg-primary/20 border-primary' 
+                      : 'border-primary/10 hover:border-primary/30'
                     }`}
                   onClick={() => setActiveModuleId(module.id)}
                 >
@@ -364,8 +383,8 @@ export default function CourseView() {
 
       {/* Modal de Novo Módulo */}
       {showNewModuleForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
+        <div className="fixed inset-0 bg-dark/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="glass-effect rounded-lg p-6 w-full max-w-md border border-primary/20">
             <h3 className="text-xl font-bold text-white mb-4">Novo Módulo</h3>
             <form onSubmit={handleCreateModule} className="space-y-4">
               <div>
@@ -376,10 +395,11 @@ export default function CourseView() {
                   type="text"
                   value={newModuleData.title}
                   onChange={(e) => setNewModuleData({ ...newModuleData, title: e.target.value })}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                  className="w-full px-3 py-2 bg-dark-lighter border border-primary/10 rounded-lg text-white focus:border-primary transition-colors"
                   required
                 />
               </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   Descrição
@@ -387,22 +407,63 @@ export default function CourseView() {
                 <textarea
                   value={newModuleData.description}
                   onChange={(e) => setNewModuleData({ ...newModuleData, description: e.target.value })}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                  className="w-full px-3 py-2 bg-dark-lighter border border-primary/10 rounded-lg text-white focus:border-primary transition-colors"
                   rows={3}
                   required
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  URL da Thumbnail
+                </label>
+                <input
+                  type="url"
+                  value={newModuleData.thumbnailUrl}
+                  onChange={(e) => setNewModuleData({ ...newModuleData, thumbnailUrl: e.target.value })}
+                  className="w-full px-3 py-2 bg-dark-lighter border border-primary/10 rounded-lg text-white focus:border-primary transition-colors"
+                  placeholder="https://exemplo.com/imagem.jpg"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  URL da Capa
+                </label>
+                <input
+                  type="url"
+                  value={newModuleData.coverUrl}
+                  onChange={(e) => setNewModuleData({ ...newModuleData, coverUrl: e.target.value })}
+                  className="w-full px-3 py-2 bg-dark-lighter border border-primary/10 rounded-lg text-white focus:border-primary transition-colors"
+                  placeholder="https://exemplo.com/capa.jpg"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Ordem
+                </label>
+                <input
+                  type="number"
+                  value={newModuleData.order}
+                  onChange={(e) => setNewModuleData({ ...newModuleData, order: parseInt(e.target.value) })}
+                  className="w-full px-3 py-2 bg-dark-lighter border border-primary/10 rounded-lg text-white focus:border-primary transition-colors"
+                  min="0"
+                  required
+                />
+              </div>
+
               <div className="flex justify-end space-x-3">
                 <button
                   type="button"
                   onClick={() => setShowNewModuleForm(false)}
-                  className="px-4 py-2 text-gray-300 hover:text-white"
+                  className="px-4 py-2 text-gray-300 hover:text-white transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
                 >
                   Criar Módulo
                 </button>
@@ -414,8 +475,8 @@ export default function CourseView() {
 
       {/* Modal de Nova Aula */}
       {showNewLessonForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
+        <div className="fixed inset-0 bg-dark/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="glass-effect rounded-lg p-6 w-full max-w-md border border-primary/20">
             <h3 className="text-xl font-bold text-white mb-4">Nova Aula</h3>
             <form onSubmit={handleCreateLesson} className="space-y-4">
               <div>
@@ -426,10 +487,11 @@ export default function CourseView() {
                   type="text"
                   value={newLessonData.title}
                   onChange={(e) => setNewLessonData({ ...newLessonData, title: e.target.value })}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                  className="w-full px-3 py-2 bg-dark-lighter border border-primary/10 rounded-lg text-white focus:border-primary transition-colors"
                   required
                 />
               </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   Descrição
@@ -437,45 +499,87 @@ export default function CourseView() {
                 <textarea
                   value={newLessonData.description}
                   onChange={(e) => setNewLessonData({ ...newLessonData, description: e.target.value })}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                  className="w-full px-3 py-2 bg-dark-lighter border border-primary/10 rounded-lg text-white focus:border-primary transition-colors"
                   rows={3}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Conteúdo
+                </label>
+                <textarea
+                  value={newLessonData.content}
+                  onChange={(e) => setNewLessonData({ ...newLessonData, content: e.target.value })}
+                  className="w-full px-3 py-2 bg-dark-lighter border border-primary/10 rounded-lg text-white focus:border-primary transition-colors"
+                  rows={4}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  URL do Vídeo
+                </label>
+                <input
+                  type="url"
+                  value={newLessonData.videoUrl}
+                  onChange={(e) => setNewLessonData({ ...newLessonData, videoUrl: e.target.value })}
+                  className="w-full px-3 py-2 bg-dark-lighter border border-primary/10 rounded-lg text-white focus:border-primary transition-colors"
+                  placeholder="https://exemplo.com/video.mp4"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  URL da Thumbnail
+                </label>
+                <input
+                  type="url"
+                  value={newLessonData.thumbnailUrl}
+                  onChange={(e) => setNewLessonData({ ...newLessonData, thumbnailUrl: e.target.value })}
+                  className="w-full px-3 py-2 bg-dark-lighter border border-primary/10 rounded-lg text-white focus:border-primary transition-colors"
+                  placeholder="https://exemplo.com/thumbnail.jpg"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  URL do Material
+                </label>
+                <input
+                  type="url"
+                  value={newLessonData.materialUrl}
+                  onChange={(e) => setNewLessonData({ ...newLessonData, materialUrl: e.target.value })}
+                  className="w-full px-3 py-2 bg-dark-lighter border border-primary/10 rounded-lg text-white focus:border-primary transition-colors"
+                  placeholder="https://exemplo.com/material.pdf"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Ordem
+                </label>
+                <input
+                  type="number"
+                  value={newLessonData.order}
+                  onChange={(e) => setNewLessonData({ ...newLessonData, order: parseInt(e.target.value) })}
+                  className="w-full px-3 py-2 bg-dark-lighter border border-primary/10 rounded-lg text-white focus:border-primary transition-colors"
+                  min="0"
                   required
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  ID do Vídeo
-                </label>
-                <input
-                  type="text"
-                  value={newLessonData.videoId}
-                  onChange={(e) => setNewLessonData({ ...newLessonData, videoId: e.target.value })}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Duração
-                </label>
-                <input
-                  type="text"
-                  value={newLessonData.duration}
-                  onChange={(e) => setNewLessonData({ ...newLessonData, duration: e.target.value })}
-                  placeholder="Ex: 10:30"
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                />
-              </div>
+
               <div className="flex justify-end space-x-3">
                 <button
                   type="button"
                   onClick={() => setShowNewLessonForm(false)}
-                  className="px-4 py-2 text-gray-300 hover:text-white"
+                  className="px-4 py-2 text-gray-300 hover:text-white transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
                 >
                   Criar Aula
                 </button>

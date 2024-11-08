@@ -1,10 +1,11 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
-    './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
-    './src/components/**/*.{js,ts,jsx,tsx,mdx}',
-    './src/app/**/*.{js,ts,jsx,tsx,mdx}',
+    './pages/**/*.{js,ts,jsx,tsx,mdx}',
+    './components/**/*.{js,ts,jsx,tsx,mdx}',
+    './app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
@@ -14,8 +15,8 @@ module.exports = {
           light: '#A78BFA'
         },
         dark: {
-          DEFAULT: '#0f0f0f',
-          lighter: '#1a1a1a',
+          DEFAULT: '#1A1A1A',
+          lighter: '#2D2D2D',
           card: '#252525'
         }
       }

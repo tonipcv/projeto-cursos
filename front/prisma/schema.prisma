@@ -14,42 +14,38 @@ datasource db {
 }
 
 model Course {
-  id          String   @id @default(uuid())
+  id          String    @id @default(cuid())
   title       String
   description String
   modules     Module[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model Module {
-  id          String   @id @default(uuid())
+  id          String    @id @default(cuid())
   title       String
   description String
   order       Int
   courseId    String
-  course      Course   @relation(fields: [courseId], references: [id])
+  course      Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
   lessons     Lesson[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([courseId])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model Lesson {
-  id          String   @id @default(uuid())
+  id          String    @id @default(cuid())
   title       String
   description String?
-  videoId     String?
-  embedUrl    String?
-  videoType   String?
-  thumbnail   String?
   duration    String?
+  videoId     String?
+  videoType   String?
+  embedUrl    String?
+  thumbnail   String?
   order       Int
   moduleId    String
-  module      Module   @relation(fields: [moduleId], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([moduleId])
+  module      Module    @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }

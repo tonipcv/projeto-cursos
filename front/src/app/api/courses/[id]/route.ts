@@ -35,6 +35,9 @@ export async function GET(
           include: {
             lessons: true,
           },
+          orderBy: {
+            order: 'asc',
+          },
         },
       },
     });
@@ -48,6 +51,7 @@ export async function GET(
 
     return NextResponse.json(course);
   } catch (error) {
+    console.error('Erro ao buscar curso:', error);
     return NextResponse.json(
       { error: 'Erro ao buscar curso' },
       { status: 500 }
